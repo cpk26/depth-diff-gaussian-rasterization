@@ -156,8 +156,8 @@ CudaRasterizer::GeometryState CudaRasterizer::GeometryState::fromChunk(char*& ch
 {
 	GeometryState geom;
 	obtain(chunk, geom.depths, P, 128);
-	obtain(chunk, geom.gaussx, P, 128);
-	obtain(chunk, geom.gaussy, P, 128);
+	obtain(chunk, geom.blendx, P, 128);
+	obtain(chunk, geom.blendy, P, 128);
 	obtain(chunk, geom.clamped, P * 3, 128);
 	obtain(chunk, geom.internal_radii, P, 128);
 	obtain(chunk, geom.means2D, P, 128);
@@ -219,8 +219,8 @@ int CudaRasterizer::Rasterizer::forward(
 	const bool prefiltered,
 	float* out_color,
 	float* out_depth,
-	float* out_gaussx,
-	float* out_gaussy,
+	float* out_blendx,
+	float* out_blendy,
 	int* radii,
 	bool debug)
 {
@@ -269,8 +269,8 @@ int CudaRasterizer::Rasterizer::forward(
 		radii,
 		geomState.means2D,
 		geomState.depths,
-		geomState.gaussx,
-		geomState.gaussy,
+		geomState.blendx,
+		geomState.blendy,
 		geomState.cov3D,
 		geomState.rgb,
 		geomState.conic_opacity,
@@ -334,16 +334,16 @@ int CudaRasterizer::Rasterizer::forward(
 		geomState.means2D,
 		feature_ptr,
 		geomState.depths,
-		geomState.gaussx,
-		geomState.gaussy,
+		geomState.blendx,
+		geomState.blendy,
 		geomState.conic_opacity,
 		imgState.accum_alpha,
 		imgState.n_contrib,
 		background,
 		out_color,
 		out_depth,
-		out_gaussx,
-		out_gaussy), debug)
+		out_blendx,
+		out_blendy), debug)
 
 	return num_rendered;
 }
@@ -371,6 +371,8 @@ void CudaRasterizer::Rasterizer::backward(
 	char* img_buffer,
 	const float* dL_dpix,
 	const float* dL_depths,
+	const float* dL_blendxs,
+	const float* dL_blendys,
 	float* dL_dmean2D,
 	float* dL_dconic,
 	float* dL_dopacity,
@@ -402,6 +404,8 @@ void CudaRasterizer::Rasterizer::backward(
 	// If we were given precomputed colors and not SHs, use them.
 	const float* color_ptr = (colors_precomp != nullptr) ? colors_precomp : geomState.rgb;
 	const float* depth_ptr = geomState.depths;
+	const float* blendx_ptr = geomState.blendx;
+	const float* blendy_ptr = geomState.blendy;
 	CHECK_CUDA(BACKWARD::render(
 		tile_grid,
 		block,
@@ -413,10 +417,14 @@ void CudaRasterizer::Rasterizer::backward(
 		geomState.conic_opacity,
 		color_ptr,
 		depth_ptr,
+		blendx_ptr,
+		blendy_ptr,
 		imgState.accum_alpha,
 		imgState.n_contrib,
 		dL_dpix,
 		dL_depths,
+		dL_blendxs,
+		dL_blendys,
 		(float3*)dL_dmean2D,
 		(float4*)dL_dconic,
 		dL_dopacity,

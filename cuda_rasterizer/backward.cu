@@ -407,10 +407,14 @@ renderCUDA(
 	const float4* __restrict__ conic_opacity,
 	const float* __restrict__ colors,
 	const float* __restrict__ depths,
+	const float* __restrict__ blendxs,
+	const float* __restrict__ blendys,
 	const float* __restrict__ final_Ts,
 	const uint32_t* __restrict__ n_contrib,
 	const float* __restrict__ dL_dpixels,
 	const float* __restrict__ dL_depths,
+	const float* __restrict__ dL_blendxs,
+	const float* __restrict__ dL_blendys,
 	float3* __restrict__ dL_dmean2D,
 	float4* __restrict__ dL_dconic2D,
 	float* __restrict__ dL_dopacity,
@@ -438,6 +442,8 @@ renderCUDA(
 	__shared__ float4 collected_conic_opacity[BLOCK_SIZE];
 	__shared__ float collected_colors[C * BLOCK_SIZE];
 	__shared__ float collected_depths[BLOCK_SIZE];
+	__shared__ float collected_blendxs[BLOCK_SIZE];
+	__shared__ float collected_blendys[BLOCK_SIZE];
 
 	// In the forward, we stored the final value for T, the
 	// product of all (1 - alpha) factors. 
@@ -452,16 +458,24 @@ renderCUDA(
 	float accum_rec[C] = { 0 };
 	float dL_dpixel[C];
 	float dL_depth;
+	float dL_blendx;
+	float dL_blendy;
 	float accum_depth_rec = 0;
+	float accum_blendx_rec = 0;
+	float accum_blendy_rec = 0;
 	if (inside){
 		for (int i = 0; i < C; i++)
 			dL_dpixel[i] = dL_dpixels[i * H * W + pix_id];
 	        dL_depth = dL_depths[pix_id];
+			dL_blendx = dL_blendxs[pix_id];
+			dL_blendy = dL_blendys[pix_id];
 	}
 
 	float last_alpha = 0;
 	float last_color[C] = { 0 };
 	float last_depth = 0;
+	float last_blendx = 0;
+	float last_blendy = 0;
 
 	// Gradient of pixel coordinate w.r.t. normalized 
 	// screen-space viewport corrdinates (-1 to 1)
@@ -484,6 +498,8 @@ renderCUDA(
 			for (int i = 0; i < C; i++)
 				collected_colors[i * BLOCK_SIZE + block.thread_rank()] = colors[coll_id * C + i];
 		        collected_depths[block.thread_rank()] = depths[coll_id];
+				collected_blendxs[block.thread_rank()] = blendxs[coll_id];
+				collected_blendys[block.thread_rank()] = blendys[coll_id];
 		}
 		block.sync();
 
@@ -536,6 +552,19 @@ renderCUDA(
 			last_depth = c_d;
 			dL_dalpha += (c_d - accum_depth_rec) * dL_depth;
 			dL_dalpha *= T;
+
+			const float gx_d = collected_blendxs[j];
+			accum_blendx_rec = last_alpha * last_blendx + (1.f - last_alpha) * accum_blendx_rec;
+			last_blendx = gx_d;
+			dL_dalpha += (gx_d - accum_blendx_rec) * dL_blendx;
+			dL_dalpha *= T;
+
+			const float gy_d = collected_blendys[j];
+			accum_blendy_rec = last_alpha * last_blendy + (1.f - last_alpha) * accum_blendy_rec;
+			last_blendy = gy_d;
+			dL_dalpha += (gy_d - accum_blendy_rec) * dL_blendy;
+			dL_dalpha *= T;
+			
 			// Update last alpha (to be used in the next iteration)
 			last_alpha = alpha;
 
@@ -644,10 +673,14 @@ void BACKWARD::render(
 	const float4* conic_opacity,
 	const float* colors,
 	const float* depths,
+	const float* blendxs,
+	const float* blendys,
 	const float* final_Ts,
 	const uint32_t* n_contrib,
 	const float* dL_dpixels,
 	const float* dL_depths,
+	const float* dL_blendxs,
+	const float* dL_blendys,
 	float3* dL_dmean2D,
 	float4* dL_dconic2D,
 	float* dL_dopacity,
@@ -662,10 +695,14 @@ void BACKWARD::render(
 		conic_opacity,
 		colors,
 		depths,
+		blendxs,
+		blendys,
 		final_Ts,
 		n_contrib,
 		dL_dpixels,
 		dL_depths,
+		dL_blendxs,
+		dL_blendys,
 		dL_dmean2D,
 		dL_dconic2D,
 		dL_dopacity,

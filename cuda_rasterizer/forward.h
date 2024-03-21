@@ -40,8 +40,8 @@ namespace FORWARD
 		int* radii,
 		float2* points_xy_image,
 		float* depths,
-		float* gaussx,
-		float* gaussy,
+		float* blendx,
+		float* blendy,
 		float* cov3Ds,
 		float* colors,
 		float4* conic_opacity,
@@ -58,16 +58,16 @@ namespace FORWARD
 		const float2* points_xy_image,
 		const float* features,
 		const float* depths,
-		const float* gaussx,
-		const float* gaussy,
+		const float* blendx,
+		const float* blendy,
 		const float4* conic_opacity,
 		float* final_T,
 		uint32_t* n_contrib,
 		const float* bg_color,
 		float* out_color,
 		float* out_depth,
-		float* out_gaussx,
-		float* out_gaussy);
+		float* out_blendx,
+		float* out_blendy);
 }
 
 

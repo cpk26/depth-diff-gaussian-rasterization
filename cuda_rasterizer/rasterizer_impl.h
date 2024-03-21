@@ -30,8 +30,8 @@ namespace CudaRasterizer
 	{
 		size_t scan_size;
 		float* depths;
-		float* gaussx;
-		float* gaussy;
+		float* blendx;
+		float* blendy;
 		char* scanning_space;
 		bool* clamped;
 		int* internal_radii;
