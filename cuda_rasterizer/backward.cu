@@ -551,18 +551,18 @@ renderCUDA(
 			accum_depth_rec = last_alpha * last_depth + (1.f - last_alpha) * accum_depth_rec;
 			last_depth = c_d;
 			dL_dalpha += (c_d - accum_depth_rec) * dL_depth;
-			dL_dalpha *= T;
 
 			const float gx_d = collected_blendxs[j];
 			accum_blendx_rec = last_alpha * last_blendx + (1.f - last_alpha) * accum_blendx_rec;
 			last_blendx = gx_d;
 			dL_dalpha += (gx_d - accum_blendx_rec) * dL_blendx;
-			dL_dalpha *= T;
 
 			const float gy_d = collected_blendys[j];
 			accum_blendy_rec = last_alpha * last_blendy + (1.f - last_alpha) * accum_blendy_rec;
 			last_blendy = gy_d;
 			dL_dalpha += (gy_d - accum_blendy_rec) * dL_blendy;
+
+
 			dL_dalpha *= T;
 			
 			// Update last alpha (to be used in the next iteration)
